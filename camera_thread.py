@@ -10,20 +10,21 @@ class CameraThread(QObject):
     image_signal = pyqtSignal(np.ndarray)
     finished = pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, _id, label):
         super().__init__()
+        self.id = _id
+        self.label = label
         self.stop_cmd = False
 
     def run(self):
-        # print('camera running')
-        cap = cv2.VideoCapture(0)
+        print('camera running')
+        cap = cv2.VideoCapture(self.id)
         while True:
             ret, frame = cap.read()
+            # print(ret)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            self.image_signal.emit(frame)
-            if self.stop_cmd:
-                print('camera stopped')
-                break
+            self.image_signal.emit(cv2.resize(frame, (self.label.width(), self.label.height())))
+
         cap.release()
         print("stopped")
         self.finished.emit()

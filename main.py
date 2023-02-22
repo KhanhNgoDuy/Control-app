@@ -1,9 +1,10 @@
 import cv2
 import numpy as np
 from PyQt5.QtCore import pyqtSignal, QThread, pyqtSlot, Qt
-from PyQt5.QtGui import QImage, QPixmap, QPainter, QColor
+from PyQt5.QtGui import QImage, QPixmap, QPainter, QColor, QPen
 from PyQt5.QtWidgets import QLabel, QMainWindow, QApplication, QPushButton
 from PyQt5.uic import loadUi
+from click_label import ClickLabel
 
 import serial
 
@@ -17,25 +18,25 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         # Set up connection with the serial port
-        self.ser = serial.Serial('COM3', 9600)
+        # self.ser = serial.Serial('COM8', 9600)
 
         # Set up UI
         self.ui = loadUi('untitled.ui', self)
-        self.label = self.findChild(QLabel, "label")
+        self.label = self.findChild(ClickLabel, "label")
+
         self.send_button = self.findChild(QPushButton, 'send_button')
         self.delete_button = self.findChild(QPushButton, 'delete_button')
         self.add_button = self.findChild(QPushButton, 'add_button')
 
-        self.send_button.clicked.connect(self.send_position)
+        self.send_button.clicked.connect(self.send_data)
         self.delete_button.clicked.connect(self.delete_data)
         self.add_button.clicked.connect(self.add_data)
 
         # Create attributes
         self.image = None
         self.pixmap = None
-        self.points = []
 
-        #Create threads
+        # Create threads
         self.create_camera_thread()
         self.create_image_processing_thread()
         self.camera_thread.start()
@@ -56,45 +57,23 @@ class MainWindow(QMainWindow):
         qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
         self.pixmap = QPixmap.fromImage(qt_image)
 
-        painter = QPainter(self.pixmap)
-        painter.setPen(QColor(255, 0, 0))
+        pen = QPen(Qt.green)
+        pen.setWidth(5)
 
-        for point in self.points:
+        painter = QPainter(self.pixmap)
+        # painter.setPen(QColor(255, 0, 0))
+        painter.setPen(pen)
+
+        for point in self.label.points:
             painter.drawPoint(point)
         painter.end()
 
         self.label.setPixmap(self.pixmap)
-        self.label.setAlignment(Qt.AlignRight)
-        self.label.setScaledContents(True)
-
-    def mousePressEvent(self, event):
-        w, h = self.width(), self.height()
-        wl, hl = self.label.width(), self.label.height()
-
-        # scale = [0.887, 0.841]
-        scale = [1, 1]
-
-        pos = event.pos()
-        pos.setX(int(np.round(pos.x() * scale[0] * w/wl)))
-        pos.setY(int(np.round(pos.y() * scale[1] * h/hl)))
-        self.points.append(pos)
-
-    def mouseMoveEvent(self, event):
-        w, h = self.width(), self.height()
-        wl, hl = self.label.width(), self.label.height()
-
-        # scale = [0.887, 0.841]
-        scale = [1, 1]
-
-        pos = event.pos()
-        pos.setX(int(np.round(pos.x() * scale[0] * w/wl)))
-        pos.setY(int(np.round(pos.y() * scale[1] * h/hl)))
-        self.points.append(pos)
 
     # Set up connection with CameraThread
     def create_camera_thread(self):
-        # self.camera = CameraThread()
-        self.camera = FakeCamThread()
+        self.camera = CameraThread(1, self.label)
+        # self.camera = FakeCamThread()
         self.camera.image_signal.connect(self.get_image)
 
         self.camera_thread = QThread()
@@ -111,10 +90,12 @@ class MainWindow(QMainWindow):
         self.position_extractor.moveToThread(self.processing_thread)
 
     def send_data(self):
-        self.ser.write(self.points)
+        print(self.label.points)
+        # self.ser.write(b'Hello from Python')
+        # self.ser.write(self.label.points)
 
     def delete_data(self):
-        self.points.clear()
+        self.label.points.clear()
 
     def add_data(self):
         pass

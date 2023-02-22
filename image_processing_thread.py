@@ -4,6 +4,10 @@ from PyQt5.QtCore import QThread, QObject, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QMainWindow, QApplication
 
 
+DISTANCE_ON_SCREEN = 0
+DISTANCE_REAL = 0
+
+
 class ImageProcessingThread(QObject):
     position_signal = pyqtSignal(dict)
 
